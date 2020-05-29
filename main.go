@@ -14,6 +14,7 @@ import (
 func main() {
 	var err error
 
+	// create logfile and init logger
 	logfile, err := os.Create("messages.log")
 	if err != nil {
 		log.Fatal("error opening log file")
@@ -25,6 +26,7 @@ func main() {
 
 	logger := log.New(os.Stdout, "gosea ", log.LstdFlags)
 
+	// Create channel for os events and receive SIGTERM events
 	sigChan := make(chan os.Signal)
 	defer close(sigChan)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM) // channels gets signal, if application is terminated
