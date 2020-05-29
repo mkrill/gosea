@@ -11,6 +11,7 @@ import (
 	"github.com/mkrill/gosea/status"
 )
 
+// Prototype
 func main() {
 	var err error
 
