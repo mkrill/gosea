@@ -12,10 +12,3 @@ type RemotePost struct {
 	Body   string      `json:"body,omitempty"`
 	Text   string      `json:"text,omitempty"`
 }
-
-type ResponsePost struct {
-	UserName string `json:"userName"`
-	Title    string `json:"title,omitempty"`
-	Body     string `json:"body,omitempty"`
-	Text     string `json:"text,omitempty"`
-}

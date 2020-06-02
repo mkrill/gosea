@@ -2,12 +2,15 @@ package main
 
 import (
 	"errors"
+	"github.com/mkrill/gosea/api"
+	"github.com/mkrill/gosea/posts"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	//"github.com/go-chi/chi" // does no have go.mod file, therefore marked as "incompatible" in our go.mod
 	"github.com/mkrill/gosea/status"
 )
 
@@ -32,12 +35,21 @@ func main() {
 	defer close(sigChan)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM) // channels gets signal, if application is terminated
 
+	// create services
+	postsService := posts.NewWithSEA()
+	apiService := api.New(postsService)
+
+	//chiRouter := chi.NewRouter()
+	//chiRouter.Get("/health", status.Health)
+	//chiRouter.Get("/api", apiService.Posts)
+
 	mux := http.NewServeMux()                // similar to constructor, make() with standard data types
 	mux.HandleFunc("/health", status.Health) // function should not be called, therefore no parameter
-
+	mux.HandleFunc("/api", apiService.Posts)
 	srv := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,
+		//Handler: chiRouter,
 	} // For clarity directly as a pointer
 
 	go func() {
