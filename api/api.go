@@ -36,7 +36,8 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filter := r.URL.Query().Get("quasi")
+	// retrieve query parameter 'filter' from URL
+	filter := r.URL.Query().Get("filter")
 
 	responsePosts := make([]Post, 0)
 	for _, remotePost := range remotePosts {
