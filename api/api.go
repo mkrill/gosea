@@ -21,7 +21,7 @@ func New(posts postsService) *Api {
 	}
 }
 
-// Posts returns a json response with remote posts
+// Posts returns a json response with filtered remote posts
 func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -40,7 +40,7 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 
 	responsePosts := make([]Post, 0)
 	for _, remotePost := range remotePosts {
-		if !strings.Contains(strings.ToLower(remotePost.Title), strings.ToLower(filter)) {
+		if filter != "" && !strings.Contains(strings.ToLower(remotePost.Title), strings.ToLower(filter)) {
 			continue
 		}
 		post := Post{
@@ -51,6 +51,7 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "application/json")
+	// encoder enc to convert our responsePosts slice to json
 	enc := json.NewEncoder(w)
 	err = enc.Encode(responsePosts)
 	if err != nil {
