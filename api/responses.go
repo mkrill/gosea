@@ -1,8 +1,8 @@
 package api
 
 type Post struct {
-	UserName string `json:"userName"`
+	Username string `json:"username"`
+	Name     string `json:"name"`
 	Title    string `json:"title,omitempty"`
 	Body     string `json:"body,omitempty"`
-	Text     string `json:"text,omitempty"`
 }

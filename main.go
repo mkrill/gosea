@@ -1,43 +1,55 @@
 package main
 
 import (
+	"context"
 	"errors"
-	"github.com/mkrill/gosea/api"
-	"github.com/mkrill/gosea/posts"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-
 	//"github.com/go-chi/chi" // does no have go.mod file, therefore marked as "incompatible" in our go.mod
+	"github.com/mkrill/gosea/api"
+	"github.com/mkrill/gosea/seabackend"
 	"github.com/mkrill/gosea/status"
 )
 
-// Prototype
+var Version = "latest"
+var GoseaLogger *log.Logger
+
 func main() {
 	var err error
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// create logfile and init logger
 	logfile, err := os.Create("messages.log")
 	if err != nil {
-		log.Fatal("error opening log file")
+		log.Fatalf("error opening log file: %s", err.Error())
 	}
 	defer func() {
 		log.Print("closing logfile")
-		logfile.Close()
+		err := logfile.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
-	logger := log.New(os.Stdout, "gosea ", log.LstdFlags)
+	GoseaLogger = log.New(os.Stdout, "gosea ", log.LstdFlags)
 
 	// Create channel for os events and receive SIGTERM events
 	sigChan := make(chan os.Signal)
+	go func() {
+		sig := <-sigChan
+		log.Printf("received signal %s", sig.String())
+		cancel()
+	}()
 	defer close(sigChan)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM) // channels gets signal, if application is terminated
 
 	// create services
-	postsService := posts.NewWithSEA()
-	apiService := api.New(postsService)
+	postsService := seabackend.NewWithSEA()
+	apiService := api.New(postsService, GoseaLogger)
 
 	//chiRouter := chi.NewRouter()
 	//chiRouter.Get("/health", status.Health)
@@ -55,15 +67,18 @@ func main() {
 	go func() {
 		err := srv.ListenAndServe() // function is blocking until server is terminated
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatalf("error starting server: %s", err.Error())
+			GoseaLogger.Fatalf("error starting server: %s", err.Error())
 		}
 	}()
 
-	logger.Print("Started service")
+	GoseaLogger.Printf("starting gosea %s", Version)
 
-	<-sigChan // code line blocks, until signal is received from channel
+	<-ctx.Done()
 
-	srv.Close()
+	err = srv.Close()
+	if err != nil {
+		GoseaLogger.Fatal(err)
+	}
 
-	logger.Print("stopping service")
+	GoseaLogger.Print("stopping service")
 }

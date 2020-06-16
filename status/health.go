@@ -3,16 +3,19 @@ package status
 import (
 	"fmt"
 	"net/http"
-	"time"
 )
 
 func Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "text/plain")
 
-	//output := strings.NewReader("OK\n")
-	//io.Copy(w, output)
+	status := "Ok"
 
 	//w.Write([]byte("OK\n"))
 
-	_, _ = fmt.Fprint(w, "Aktuelle Zeit: %v", time.Now().String())
+	/*
+		output := strings.NewReader(status)
+		io.Copy(w, output)
+	*/
+
+	_, _ = fmt.Fprintf(w, "Health: %s", status)
 }
