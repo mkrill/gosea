@@ -5,10 +5,11 @@ import (
 	"strings"
 )
 
+// New data type because semantically different (easier for the reader)
 type Field int
 
 const (
-	FieldTitle Field = iota
+	FieldTitle Field = iota // iota fills values automatically starting from 0
 	FieldBody
 	FieldsAll
 )

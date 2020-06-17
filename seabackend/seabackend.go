@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"time"
 )
@@ -39,32 +38,50 @@ func NewWithSEA() *SeaBackend {
 
 // LoadPosts loads all posts existing from p.endpoint
 func (p *SeaBackend) LoadPosts(ctx context.Context) ([]RemotePost, error) {
-	var RemotePosts []RemotePost
+	var remotePosts []RemotePost
 
-	err := p.load(ctx, p.endpoint+"/posts", &RemotePosts)
+	err := p.load(ctx, p.endpoint+"/posts", &remotePosts)
 
 	if err != nil {
-		return RemotePosts, err
+		return remotePosts, fmt.Errorf("could not load posts: %w", err)
 	}
 
-	return RemotePosts, nil
+	return remotePosts, nil
 }
 
-// LoadUsers loads all users existing from p.endpoint
+// LoadUsers loads all existing users from external endpoint
 func (p *SeaBackend) LoadUsers(ctx context.Context) ([]RemoteUser, error) {
-	var RemoteUsers []RemoteUser
-
-	err := p.load(ctx, p.endpoint+"/users", &RemoteUsers)
-
+	var remoteUsers []RemoteUser
+	err := p.load(ctx, p.endpoint+"/users", &remoteUsers)
 	if err != nil {
-		return RemoteUsers, err
+		return remoteUsers, fmt.Errorf("could not load users: %w", err)
 	}
 
-	return RemoteUsers, nil
+	return remoteUsers, nil
+}
+
+// LoadUser loads user with id from external endpoint
+func (p *SeaBackend) LoadUser(ctx context.Context, id string) (RemoteUser, error) {
+	var remoteUsers []RemoteUser
+	var user RemoteUser
+
+	err := p.load(ctx, p.endpoint+"/users?id"+id, &remoteUsers)
+
+	if err != nil {
+		return user, fmt.Errorf("could not load user: %w", err)
+	}
+
+	if len(remoteUsers) <= 0 {
+		return user, fmt.Errorf("could not load user for id %s", id)
+	}
+
+	user = remoteUsers[0]
+
+	return user, nil
 }
 
 // load data via get request from requestUrl and write json response into data
-func (p *SeaBackend) load(ctx context.Context, requestUrl string, data interface{}) error {
+func (p *SeaBackend) load(ctx context.Context, requestUrl string, data interface{}) (err error) {
 
 	// set timeout context to defaultTimeout (see above)
 	ctxTimeout, cancel := context.WithTimeout(ctx, defaultTimeout)
@@ -85,11 +102,7 @@ func (p *SeaBackend) load(ctx context.Context, requestUrl string, data interface
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer func() {
-		err := res.Body.Close()
-		if err != nil {
-			// ToDo How do I get access to the logger from main?
-			log.Fatal(err)
-		}
+		err = res.Body.Close()
 	}()
 
 	if res.StatusCode >= 400 {

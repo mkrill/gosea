@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -94,10 +93,7 @@ func TestPosts_LoadPosts(t *testing.T) {
 			testSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(testcase.emulatedResponseStatus)
 				_, err := fmt.Fprint(w, testcase.emulatedServerReponse)
-				if err != nil {
-					// ToDo How do I get access to logger from main()?
-					log.Fatal(err)
-				}
+				assert.NoError(t, err)
 			}))
 			// close the server when finished
 			defer testSrv.Close()
@@ -115,7 +111,7 @@ func TestPosts_LoadPosts(t *testing.T) {
 
 			// execute LoadPosts() based on testPosts and check
 			// if resulting error is correct
-			rp, err := testPosts.LoadPosts(context.Background())
+			rp, err := testPosts.LoadPosts(context.TODO())
 			if testcase.errorExpected {
 				assert.Error(t, err)
 			} else {

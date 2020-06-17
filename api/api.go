@@ -3,24 +3,27 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"github.com/mkrill/gosea/seabackend"
 	"log"
 	"net/http"
+	"time"
+
+	"github.com/mkrill/gosea/seabackend"
 )
 
-type postsService interface {
+type seaBackendService interface {
 	LoadPosts(ctx context.Context) ([]seabackend.RemotePost, error)
+	LoadUser(ctx context.Context, id string) (seabackend.RemoteUser, error)
 }
 
 type Api struct {
-	posts  postsService
-	logger *log.Logger
+	seaBackend seaBackendService
+	logger     *log.Logger
 }
 
-func New(posts postsService, logger *log.Logger) *Api {
+func New(seaBackend seaBackendService, logger *log.Logger) *Api {
 	return &Api{
-		posts:  posts,
-		logger: logger,
+		seaBackend: seaBackend,
+		logger:     logger,
 	}
 }
 
@@ -30,6 +33,12 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 
 	a.logger.Printf("got request %s %s", r.Method, r.URL.Path)
 
+	// measure runtime
+	start := time.Now()
+	defer func() {
+		a.logger.Printf("request took %s", time.Now().Sub(start))
+	}()
+
 	if r.Method != http.MethodGet {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -37,8 +46,9 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 
 	ctxValue := context.WithValue(r.Context(), "id", 1)
 
-	remotePosts, err := a.posts.LoadPosts(ctxValue)
+	remotePosts, err := a.seaBackend.LoadPosts(ctxValue)
 	if err != nil {
+		a.logger.Printf("Error loading from seabackend: %w", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -53,14 +63,24 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// Load user information from backend
+		user, err := a.seaBackend.LoadUser(ctxValue, remotePost.UserID.String())
+		if err != nil {
+			a.logger.Printf("could not load user %s", remotePost.UserID)
+			continue
+		}
+
 		post := Post{
-			Title: remotePost.Title,
-			Body:  remotePost.Body,
+			Title:       remotePost.Title,
+			Body:        remotePost.Body,
+			Username:    user.Username,
+			CompanyName: user.Company.Name,
 		}
 		responsePosts = append(responsePosts, post)
 	}
 
 	w.Header().Set("content-type", "application/json")
+
 	// encoder enc to convert our responsePosts slice to json
 	enc := json.NewEncoder(w)
 	err = enc.Encode(responsePosts)

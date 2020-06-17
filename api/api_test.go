@@ -24,11 +24,16 @@ func (pm *postsMock) LoadPosts(ctx context.Context) ([]seabackend.RemotePost, er
 	return pm.remotePosts, pm.err
 }
 
+func (pm *postsMock) LoadUser(ctx context.Context, id string) (seabackend.RemoteUser, error) {
+	// ToDo Returning empty user???
+	return seabackend.RemoteUser{}, nil
+}
+
 func TestApi_Posts(t *testing.T) {
 	logBuf := &bytes.Buffer{}
 
 	testApi := &Api{
-		posts: &postsMock{
+		seaBackend: &postsMock{
 			remotePosts: []seabackend.RemotePost{
 				{
 					UserID: json.Number("1"),
