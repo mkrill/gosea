@@ -73,7 +73,7 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 		for remotePost := range remotePostsChan {
 			user, err := a.seaBackend.LoadUser(ctxValue, remotePost.UserID.String())
 			if err != nil {
-				a.logger.Printf("could not load user %s", remotePost.UserID)
+				a.logger.Printf("could not load user %s from backend", remotePost.UserID)
 				continue
 			}
 			post := Post{
@@ -98,15 +98,15 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// create a signaling channel transfering empty structs to determine, when processing of responsePosts ended
-	responsePostProcessingEnded := make(chan struct{})
+	responsePostProcessingEndedChan := make(chan struct{})
 
 	// create anonymous go routine to process responsePosts passed back from loadUserFunc()
 	go func() {
 		for post := range responsePostsChan {
 			responsePosts = append(responsePosts, post)
 		}
-		// put empty struct into responsePostProcessingEnded to indicate that responsePost processing ended
-		responsePostProcessingEnded <- struct{}{}
+		// put empty struct into responsePostProcessingEndedChan to indicate that responsePost processing ended
+		responsePostProcessingEndedChan <- struct{}{}
 		a.logger.Print("append posts stopped")
 	}()
 
@@ -127,9 +127,9 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 
 	// close responsePostsChan after all loadUserFunc() go routines have stopped
 	close(responsePostsChan)
-	// wait for empty struct in channel responsePostProcessingEnded indicating that
+	// wait for empty struct in channel responsePostProcessingEndedChan indicating that
 	// the go routine processing responsePosts ended
-	<-responsePostProcessingEnded
+	<-responsePostProcessingEndedChan
 
 	w.Header().Set("content-type", "application/json")
 

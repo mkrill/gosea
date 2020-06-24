@@ -65,7 +65,7 @@ func (p *SeaBackend) LoadUser(ctx context.Context, id string) (RemoteUser, error
 	var remoteUsers []RemoteUser
 	var user RemoteUser
 
-	err := p.load(ctx, p.endpoint+"/users?id"+id, &remoteUsers)
+	err := p.load(ctx, p.endpoint+"/users?id="+id, &remoteUsers)
 
 	if err != nil {
 		return user, fmt.Errorf("could not load user: %w", err)
