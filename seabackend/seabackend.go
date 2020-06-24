@@ -5,35 +5,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
 
 const (
-	seaEndpoint    = "http://sa-bonn.ddnss.de:3000"
-	defaultTimeout = 10 * time.Second
+	seaEndpoint     = "http://sa-bonn.ddnss.de:3000"
+	defaultTimeout  = 10 * time.Second
+	defaultCacheTTL = 2 * time.Minute
 )
+
+// Cache is an interface containing the caching functions Get and Set
+type Cache interface {
+	Get(key string, data interface{}) error
+	Set(key string, data interface{}) error
+}
 
 // SeaBackend bundles all function to access external json endpoint
 type SeaBackend struct {
 	endpoint   string
+	cache      Cache
 	httpClient *http.Client
+	logger *log.Logger
 }
 
-// New returns a new initialized Posts struct for given endpoint
-func New(endpoint string) *SeaBackend {
+// New returns a new initialized SeaBackend struct for given endpoint
+func New(endpoint string, logger *log.Logger) *SeaBackend {
 	return &SeaBackend{
 		endpoint: endpoint,
+		cache:	NewRequestCache(defaultCacheTTL, logger),
 		httpClient: &http.Client{
 			Timeout: defaultTimeout,
 		},
+		logger: logger,
 	}
 }
 
 // NewWithSEA returns a new initialized Posts struct pointing
 // to SEA json server endpoint
-func NewWithSEA() *SeaBackend {
-	return New(seaEndpoint)
+func NewWithSEA(logger *log.Logger) *SeaBackend {
+	return New(seaEndpoint, logger)
 }
 
 // LoadPosts loads all posts existing from p.endpoint
@@ -83,6 +95,16 @@ func (p *SeaBackend) LoadUser(ctx context.Context, id string) (RemoteUser, error
 // load data via get request from requestUrl and write json response into data
 func (p *SeaBackend) load(ctx context.Context, requestUrl string, data interface{}) (err error) {
 
+	// retrieve request result from cache
+	err = p.cache.Get(requestUrl, data)
+	// if requestUrl was found in cache
+	if err == nil {
+		p.logger.Printf("Retrieved response to %s from cache", requestUrl)
+		return nil
+	}
+
+	p.logger.Printf("Retrieving response to %s from backend", requestUrl)
+
 	// set timeout context to defaultTimeout (see above)
 	ctxTimeout, cancel := context.WithTimeout(ctx, defaultTimeout)
 	defer cancel()
@@ -118,6 +140,12 @@ func (p *SeaBackend) load(ctx context.Context, requestUrl string, data interface
 	err = json.Unmarshal(respData, data)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal body: %w", err)
+	}
+
+	// refresh cache item with data just read
+	err = p.cache.Set(requestUrl, data)
+	if err != nil {
+		return fmt.Errorf("failed to save data to cache: %w", err)
 	}
 
 	return nil

@@ -48,7 +48,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM) // channels gets signal, if application is terminated
 
 	// create services
-	postsService := seabackend.NewWithSEA()
+	postsService := seabackend.NewWithSEA(GoseaLogger)
 	apiService := api.New(postsService, GoseaLogger)
 
 	//chiRouter := chi.NewRouter()
