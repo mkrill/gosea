@@ -1,4 +1,4 @@
-package seabackend
+package infrastructure
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	errorNotFound = errors.New("cache item not found")
-	errorTTLExceeded = errors.New("cache item outdated")
+	errorNotFound = errors.New("Cache item not found")
+	errorTTLExceeded = errors.New("Cache item outdated")
 )
 
 type cacheItem struct {
@@ -35,7 +35,7 @@ func NewRequestCache(ttl time.Duration, logger *log.Logger) *RequestCache {
 	}
 }
 
-// Set writes data with key into the request cache
+// Set writes data with key into the request Cache
 func (rc *RequestCache) Set(key string, data interface{}) error {
 	// convert data to []byte
 	buf := &bytes.Buffer{}
@@ -45,11 +45,11 @@ func (rc *RequestCache) Set(key string, data interface{}) error {
 		return err
 	}
 
-	// lock cache
+	// lock Cache
 	rc.protectCache.Lock()
 	defer rc.protectCache.Unlock()
 
-	// write data into cache
+	// write data into Cache
 	rc.cache[key] = cacheItem{
 		data: buf.Bytes(),
 		createdAt: time.Now(),
@@ -58,24 +58,24 @@ func (rc *RequestCache) Set(key string, data interface{}) error {
 	return nil
 }
 
-// Get reads data with key from request cache into data, if TTL not exceeded
+// Get reads data with key from request Cache into data, if TTL not exceeded
 func (rc *RequestCache) Get(key string, data interface{}) error {
 
-	// loc cache from reading which setting new value for key
+	// loc Cache from reading which setting new value for key
 	rc.protectCache.RLock()
 	defer rc.protectCache.RUnlock()
 
 	item, found := rc.cache[key]
 
-	// if item not found in cache
+	// if item not found in Cache
 	if !found {
-		rc.logger.Printf("item for key %s not found in cache", key)
+		rc.logger.Printf("item for key %s not found in Cache", key)
 		return errorNotFound
 	}
 
 	// if item is outdated
 	if time.Now().Sub(item.createdAt) > rc.maxTTL {
-		rc.logger.Printf("item for key %s in cache, but outdated (from %v)", key, item.createdAt)
+		rc.logger.Printf("item for key %s in Cache, but outdated (from %v)", key, item.createdAt)
 		return errorTTLExceeded
 	}
 

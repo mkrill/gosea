@@ -1,9 +1,10 @@
-package seabackend
+package seaBackend
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,19 +15,19 @@ import (
 func TestPosts_LoadPosts(t *testing.T) {
 	// setup slice tests to contain the test case names and the expected result
 	tests := []struct {
-		name                   string       // name of test case
-		emulatedServerReponse  string       // emulated server response as json string
-		emulatedResponseStatus int          // emulated emulatedResponseStatus
-		wrongEndpoint          bool         //
-		errorExpected          bool         // true, if error is expected in test case
-		expectedResult         []RemotePost // expected RemotePost slice from LoadPosts function
+		name                   string              // name of test case
+		emulatedServerReponse  string              // emulated server response as json string
+		emulatedResponseStatus int                 // emulated emulatedResponseStatus
+		wrongEndpoint          bool                //
+		errorExpected          bool                // true, if error is expected in test case
+		expectedResult         []Entity.RemotePost // expected RemotePost slice from LoadPosts function
 	}{
 		{
 			name:                   "Normaler Response mit mehreren Werten",
 			emulatedServerReponse:  `[{"userId": 1, "id":1, "title": "Title1", "body": "Body1"},{"userId": 2, "id":2, "title": "Title2", "body": "Body2"}]`,
 			emulatedResponseStatus: http.StatusOK,
 			errorExpected:          false,
-			expectedResult: []RemotePost{
+			expectedResult: []Entity.RemotePost{
 				{
 					UserID: json.Number("1"),
 					ID:     json.Number("1"),
@@ -53,7 +54,7 @@ func TestPosts_LoadPosts(t *testing.T) {
 			emulatedServerReponse:  `[{"userId": "1", "id":"1", "title": "Title1", "body": "Body1"},{"userId": 2, "id":2, "title": "Title2", "body": "Body2"}]`,
 			emulatedResponseStatus: http.StatusOK,
 			errorExpected:          false,
-			expectedResult: []RemotePost{
+			expectedResult: []Entity.RemotePost{
 				{
 					UserID: json.Number("1"),
 					ID:     json.Number("1"),

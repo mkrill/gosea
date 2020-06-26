@@ -1,4 +1,4 @@
-package api
+package Entity
 
 type Post struct {
 	Username    string `json:"username"`

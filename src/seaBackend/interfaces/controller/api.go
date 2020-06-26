@@ -1,69 +1,62 @@
-package api
+package controller
 
 import (
 	"context"
-	"encoding/json"
-	"log"
+	"flamingo.me/flamingo/v3/framework/web"
+	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
+	"github.com/mkrill/gosea/src/seaBackend/domain/Service"
+	"github.com/pkg/errors"
 	"net/http"
 	"sync"
-	"time"
-
-	"github.com/mkrill/gosea/seabackend"
 )
 
-const workerCount = 3
-
-type seaBackendService interface {
-	LoadPosts(ctx context.Context) ([]seabackend.RemotePost, error)
-	LoadUser(ctx context.Context, id string) (seabackend.RemoteUser, error)
-}
-
-type Api struct {
-	seaBackend seaBackendService
-	logger     *log.Logger
-}
-
-func New(seaBackend seaBackendService, logger *log.Logger) *Api {
-	return &Api{
-		seaBackend: seaBackend,
-		logger:     logger,
+type (
+	ApiController struct {
+		seaBackend  Service.ISeaBackendService
+		responder   *web.Responder
+		workerCount int
 	}
+)
+
+func (a *ApiController) Inject(
+	sba Service.ISeaBackendService,
+	responder *web.Responder,
+	cfg *struct {
+	workerCount float64 `inject:"config:api.workerCount"`
+},
+) *ApiController {
+	if cfg != nil {
+		a.workerCount = int(cfg.workerCount)
+		a.responder = responder
+		a.seaBackend = sba
+	}
+	return a
 }
 
-// Posts returns a json response with filtered remote seabackend
-func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
+// showPostsWithUsers returns a json response with filtered remote seabackend
+func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request) web.Result {
 	var err error
 
-	a.logger.Printf("got request %s %s", r.Method, r.URL.Path)
-
-	// measure runtime
-	start := time.Now()
-	defer func() {
-		a.logger.Printf("request took %s", time.Now().Sub(start))
-	}()
-
-	if r.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
+	if req.Request().Method != http.MethodGet {
+		return a.responder.ServerError(errors.Errorf("Controller method needs to be called by GET request"))
 	}
 
-	ctxValue := context.WithValue(r.Context(), "id", 1)
+	ctxValue := context.WithValue(req.Request().Context(), "id", 1)
 
 	remotePosts, err := a.seaBackend.LoadPosts(ctxValue)
 	if err != nil {
-		a.logger.Printf("error loading seaBackend: %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		//a.logger.Printf("error loading seaBackend: %s", err)
+		return a.responder.ServerError(err)
 	}
 
 	// retrieve query parameter 'filterValue' from URL
-	filterValue := r.URL.Query().Get("filter")
+	filterValue := req.Request().URL.Query().Get("filter")
 
-	responsePosts := make([]Post, 0)
+	responsePosts := make([]Entity.Post, 0)
 	// Create channel to pass remotePosts to be processed to loadUserFunc
-	remotePostsChan := make(chan seabackend.RemotePost)
+	remotePostsChan := make(chan Entity.RemotePost)
 	// Create channel to pass responsePosts back from loadUserFunc
-	responsePostsChan := make(chan Post)
+	responsePostsChan := make(chan Entity.Post)
 
 	// create function to enhance remotePosts with user data
 	loadUserFunc := func(workerId int, wg *sync.WaitGroup) {
@@ -73,10 +66,9 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 		for remotePost := range remotePostsChan {
 			user, err := a.seaBackend.LoadUser(ctxValue, remotePost.UserID.String())
 			if err != nil {
-				a.logger.Printf("could not load user %s from backend", remotePost.UserID)
 				continue
 			}
-			post := Post{
+			post := Entity.Post{
 				Title:       remotePost.Title,
 				Body:        remotePost.Body,
 				Username:    user.Username,
@@ -86,14 +78,14 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 			// pass back post into responsePostChan
 			responsePostsChan <- post
 		}
-		a.logger.Printf("lodUserFunc %d stopped", workerId)
+		//a.logger.Printf("lodUserFunc %d stopped", workerId)
 	}
 
 	// create waitGroup wg to keep track of go routines
 	wg := &sync.WaitGroup{}
 
 	// create workerCount number of go routines processing loadUserFunc()
-	for i := 0; i < workerCount; i++ {
+	for i := 0; i < a.workerCount; i++ {
 		go loadUserFunc(i, wg)
 	}
 
@@ -107,13 +99,13 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 		}
 		// put empty struct into responsePostProcessingEndedChan to indicate that responsePost processing ended
 		responsePostProcessingEndedChan <- struct{}{}
-		a.logger.Print("append posts stopped")
+		//a.logger.Print("append posts stopped")
 	}()
 
 	// start processing remotePosts
 	for _, remotePost := range remotePosts {
 		// if current remotePost dies not match the filter, skip it
-		if !remotePost.Contains(filterValue, seabackend.FieldTitle) {
+		if !remotePost.Contains(filterValue, Entity.FieldTitle) {
 			continue
 		}
 		// put remotePost into remotePostChan as input for loadUserFunc()
@@ -131,12 +123,5 @@ func (a *Api) Posts(w http.ResponseWriter, r *http.Request) {
 	// the go routine processing responsePosts ended
 	<-responsePostProcessingEndedChan
 
-	w.Header().Set("content-type", "application/json")
-
-	// encoder enc to convert our responsePosts slice to json
-	enc := json.NewEncoder(w)
-	err = enc.Encode(responsePosts)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return a.responder.Data(responsePosts)
 }
