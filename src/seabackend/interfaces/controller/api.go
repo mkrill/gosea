@@ -32,7 +32,6 @@ func (a *ApiController) Inject(
 
 // showPostsWithUsers returns a json response with filtered remote seabackend
 func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request) web.Result {
-	var err error
 
 	// retrieve query parameter 'filterValue' from URL
 	filter := req.Request().URL.Query().Get("filter")

@@ -5,15 +5,15 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"sync"
 	"time"
+
+	"flamingo.me/flamingo/v3/framework/flamingo"
 )
 
 var (
-	errorNotFound    = errors.New("Cache item not found")
-	errorTTLExceeded = errors.New("Cache item outdated")
+	errorNotFound    = errors.New("Cacher item not found")
+	errorTTLExceeded = errors.New("Cacher item outdated")
 )
 
 type cacheItem struct {
@@ -25,32 +25,25 @@ type RequestCache struct {
 	maxTTL       time.Duration
 	cache        map[string]cacheItem
 	protectCache sync.RWMutex
-	logger       *log.Logger
+	logger       flamingo.Logger
 }
 
 // Inject dependencies
 func (rc *RequestCache) Inject(
+	logger flamingo.Logger,
 	cfg *struct {
-	DefaultCacheTTL float64 `inject:"config:seabackend.defaultCacheTTL"`
-}) *RequestCache {
+		DefaultCacheTTL float64 `inject:"config:seabackend.defaultCacheTTL"`
+	},
+) {
 	if cfg != nil {
 		rc.maxTTL = time.Duration(cfg.DefaultCacheTTL) * time.Second
 	}
 	rc.cache = make(map[string]cacheItem)
-	rc.logger = log.New(os.Stdout, "gosea", log.LstdFlags)
+	rc.logger = logger
 
-	return rc
 }
 
-//func NewRequestCache(ttl time.Duration, logger *log.Logger) *RequestCache {
-//	return &RequestCache{
-//		maxTTL: ttl,
-//		cache:  make(map[string]cacheItem),
-//		logger: logger,
-//	}
-//}
-
-// Set writes data with key into the request Cache
+// Set writes data with key into the request Cacher
 func (rc *RequestCache) Set(key string, data interface{}) error {
 	// convert data to []byte
 	buf := &bytes.Buffer{}
@@ -60,11 +53,11 @@ func (rc *RequestCache) Set(key string, data interface{}) error {
 		return err
 	}
 
-	// lock Cache
+	// lock Cacher
 	rc.protectCache.Lock()
 	defer rc.protectCache.Unlock()
 
-	// write data into Cache
+	// write data into Cacher
 	rc.cache[key] = cacheItem{
 		data:      buf.Bytes(),
 		createdAt: time.Now(),
@@ -73,24 +66,24 @@ func (rc *RequestCache) Set(key string, data interface{}) error {
 	return nil
 }
 
-// Get reads data with key from request Cache into data, if TTL not exceeded
+// Get reads data with key from request Cacher into data, if TTL not exceeded
 func (rc *RequestCache) Get(key string, data interface{}) error {
 
-	// loc Cache from reading which setting new value for key
+	// loc Cacher from reading which setting new value for key
 	rc.protectCache.RLock()
 	defer rc.protectCache.RUnlock()
 
 	item, found := rc.cache[key]
 
-	// if item not found in Cache
+	// if item not found in Cacher
 	if !found {
-		rc.logger.Printf("item for key %s not found in Cache", key)
+		rc.logger.Warn(fmt.Sprintf("item for key %s not found in Cacher", key))
 		return errorNotFound
 	}
 
 	// if item is outdated
 	if time.Now().Sub(item.createdAt) > rc.maxTTL {
-		rc.logger.Printf("item for key %s in Cache, but outdated (from %v)", key, item.createdAt)
+		rc.logger.Warn(fmt.Sprintf("item for key %s in Cacher, but outdated (from %v)", key, item.createdAt))
 		return errorTTLExceeded
 	}
 

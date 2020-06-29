@@ -3,3 +3,5 @@ GET http://localhost:3322/health
 GET http://localhost:3322/api?filter=quasi
 ###
 GET http://localhost:3322/api
+###
+GET http://localhost:3322/health/ping

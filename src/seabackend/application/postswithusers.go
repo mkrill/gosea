@@ -2,7 +2,10 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"sync"
+
+	"flamingo.me/flamingo/v3/framework/flamingo"
 
 	"github.com/mkrill/gosea/src/seabackend/domain/entity"
 	"github.com/mkrill/gosea/src/seabackend/domain/service"
@@ -11,16 +14,21 @@ import (
 type PostsWithUsers struct {
 	seaBackendAdapter service.SeaBackendLoader
 	workerCount       int
+	logger            flamingo.Logger
 }
 
-func (pwu *PostsWithUsers) Inject(seaBackendAdapter service.SeaBackendLoader,
+func (pwu *PostsWithUsers) Inject(
+	seaBackendAdapter service.SeaBackendLoader,
+	logger flamingo.Logger,
 	cfg *struct {
-	WorkerCount float64 `inject:"config:api.workerCount"`
-},
-) *PostsWithUsers {
+		WorkerCount float64 `inject:"config:api.workerCount"`
+	},
+) {
+	if cfg != nil {
+		pwu.workerCount = int(cfg.WorkerCount)
+	}
 	pwu.seaBackendAdapter = seaBackendAdapter
-	pwu.workerCount = int(cfg.WorkerCount)
-	return pwu
+	pwu.logger = logger
 }
 
 func (pwu *PostsWithUsers) RetrievePostsWithUsersFromBackend(ctx context.Context, filter string) ([]entity.Post, error) {
@@ -29,7 +37,7 @@ func (pwu *PostsWithUsers) RetrievePostsWithUsersFromBackend(ctx context.Context
 
 	remotePosts, err := pwu.seaBackendAdapter.LoadPosts(ctx)
 	if err != nil {
-		//a.logger.Printf("error loading seabackend: %s", err)
+		pwu.logger.Error(fmt.Sprintf("error loading seabackend: %s", err))
 		return responsePosts, err
 	}
 
@@ -58,7 +66,7 @@ func (pwu *PostsWithUsers) RetrievePostsWithUsersFromBackend(ctx context.Context
 			// pass back post into responsePostChan
 			responsePostsChan <- post
 		}
-		//a.logger.Printf("lodUserFunc %d stopped", workerId)
+		pwu.logger.Debugf("loadUserFunc %d stopped", workerId)
 	}
 
 	// create waitGroup wg to keep track of go routines
@@ -79,7 +87,7 @@ func (pwu *PostsWithUsers) RetrievePostsWithUsersFromBackend(ctx context.Context
 		}
 		// put empty struct into responsePostProcessingEndedChan to indicate that responsePost processing ended
 		responsePostProcessingEndedChan <- struct{}{}
-		//a.logger.Print("append posts stopped")
+		pwu.logger.Debug("append posts stopped")
 	}()
 
 	// start processing remotePosts

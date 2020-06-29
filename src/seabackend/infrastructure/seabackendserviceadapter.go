@@ -12,8 +12,8 @@ import (
 	"github.com/mkrill/gosea/src/seabackend/domain/service"
 )
 
-// Cache is an interface containing the caching functions Get and Set
-type Cache interface {
+// Cacher is an interface containing the caching functions Get and Set
+type Cacher interface {
 	Get(key string, data interface{}) error
 	Set(key string, data interface{}) error
 }
@@ -21,7 +21,7 @@ type Cache interface {
 type (
 	SeaBackendServiceAdapter struct {
 		Endpoint   string
-		Cache      Cache
+		Cache      Cacher
 		HttpClient *http.Client
 	}
 )
@@ -33,17 +33,17 @@ var _ service.SeaBackendLoader = &SeaBackendServiceAdapter{}
 func (sba *SeaBackendServiceAdapter) Inject(
 	cache *RequestCache,
 	cfg *struct {
-	SeaEndpoint    string  `inject:"config:seabackend.seaEndpoint"`
-	DefaultTimeout float64 `inject:"config:seabackend.defaultTimeout"`
-}) *SeaBackendServiceAdapter {
+		SeaEndpoint    string  `inject:"config:seabackend.endpoint"`
+		DefaultTimeout float64 `inject:"config:seabackend.defaultTimeout"`
+	},
+) {
 	if cfg != nil {
 		sba.Endpoint = cfg.SeaEndpoint
-		sba.Cache = cache
 		sba.HttpClient = &http.Client{
 			Timeout: time.Duration(cfg.DefaultTimeout) * time.Second,
 		}
 	}
-	return sba
+	sba.Cache = cache
 }
 
 // LoadPosts loads all posts existing from p.Endpoint
@@ -93,9 +93,9 @@ func (sba *SeaBackendServiceAdapter) LoadUser(ctx context.Context, id string) (e
 // load data via get request from requestUrl and write json response into data
 func (sba *SeaBackendServiceAdapter) load(ctx context.Context, requestUrl string, data interface{}) (err error) {
 
-	// retrieve request result from Cache
+	// retrieve request result from Cacher
 	err = sba.Cache.Get(requestUrl, data)
-	// if requestUrl was found in Cache
+	// if requestUrl was found in Cacher
 	if err == nil {
 		return nil
 	}
@@ -137,10 +137,10 @@ func (sba *SeaBackendServiceAdapter) load(ctx context.Context, requestUrl string
 		return fmt.Errorf("failed to unmarshal body: %w", err)
 	}
 
-	// refresh Cache item with data just read
+	// refresh Cacher item with data just read
 	err = sba.Cache.Set(requestUrl, data)
 	if err != nil {
-		return fmt.Errorf("failed to save data to Cache: %w", err)
+		return fmt.Errorf("failed to save data to Cacher: %w", err)
 	}
 
 	return nil

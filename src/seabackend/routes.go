@@ -2,6 +2,7 @@ package seabackend
 
 import (
 	"flamingo.me/flamingo/v3/framework/web"
+
 	"github.com/mkrill/gosea/src/seabackend/interfaces/controller"
 )
 
@@ -11,9 +12,8 @@ type routes struct {
 }
 
 // Inject method which defines all dependency injections used by routes struct
-func (r *routes) Inject(api *controller.ApiController) *routes {
+func (r *routes) Inject(api *controller.ApiController) {
 	r.apiController = api
-	return r
 }
 
 // Routes method which defines all routes handlers in module

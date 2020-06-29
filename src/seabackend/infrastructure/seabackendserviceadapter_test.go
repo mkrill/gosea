@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mkrill/gosea/src/seabackend/domain/entity"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/mkrill/gosea/src/seabackend/domain/entity"
 
 	"github.com/stretchr/testify/assert"
 )

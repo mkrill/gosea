@@ -19,4 +19,5 @@ func (m *Module) Configure(injector *dingo.Injector) {
 
 	injector.Bind(new(service.SeaBackendLoader)).To(new(infrastructure.SeaBackendServiceAdapter))
 	injector.Bind(new(controller.PostsWithUsersLoader)).To(new(application.PostsWithUsers))
+	injector.Bind(new(infrastructure.Cacher)).To(new(infrastructure.RequestCache))
 }
