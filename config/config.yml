@@ -2,3 +2,11 @@ seabackend.seaEndpoint: "http://sa-bonn.ddnss.de:3000"
 seabackend.defaultTimeout: 10
 seabackend.defaultCacheTTL: 10
 api.workerCount: 3
+flamingo:
+  healthcheck:
+    checkPath: "/health/check"
+    pingPath: "/health/ping"
+    checkSession: false
+    checkAuth: false
+  session:
+    backend: memory
