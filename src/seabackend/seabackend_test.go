@@ -1,10 +1,10 @@
-package seaBackend
+package seabackend
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
+	"github.com/mkrill/gosea/src/seabackend/domain/entity"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,14 +20,14 @@ func TestPosts_LoadPosts(t *testing.T) {
 		emulatedResponseStatus int                 // emulated emulatedResponseStatus
 		wrongEndpoint          bool                //
 		errorExpected          bool                // true, if error is expected in test case
-		expectedResult         []Entity.RemotePost // expected RemotePost slice from LoadPosts function
+		expectedResult         []entity.RemotePost // expected RemotePost slice from LoadPosts function
 	}{
 		{
 			name:                   "Normaler Response mit mehreren Werten",
 			emulatedServerReponse:  `[{"userId": 1, "id":1, "title": "Title1", "body": "Body1"},{"userId": 2, "id":2, "title": "Title2", "body": "Body2"}]`,
 			emulatedResponseStatus: http.StatusOK,
 			errorExpected:          false,
-			expectedResult: []Entity.RemotePost{
+			expectedResult: []entity.RemotePost{
 				{
 					UserID: json.Number("1"),
 					ID:     json.Number("1"),
@@ -54,7 +54,7 @@ func TestPosts_LoadPosts(t *testing.T) {
 			emulatedServerReponse:  `[{"userId": "1", "id":"1", "title": "Title1", "body": "Body1"},{"userId": 2, "id":2, "title": "Title2", "body": "Body2"}]`,
 			emulatedResponseStatus: http.StatusOK,
 			errorExpected:          false,
-			expectedResult: []Entity.RemotePost{
+			expectedResult: []entity.RemotePost{
 				{
 					UserID: json.Number("1"),
 					ID:     json.Number("1"),

@@ -6,34 +6,49 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
 
 var (
-	errorNotFound = errors.New("Cache item not found")
+	errorNotFound    = errors.New("Cache item not found")
 	errorTTLExceeded = errors.New("Cache item outdated")
 )
 
 type cacheItem struct {
-	data []byte
+	data      []byte
 	createdAt time.Time
 }
 
 type RequestCache struct {
-	maxTTL time.Duration
-	cache map[string]cacheItem
+	maxTTL       time.Duration
+	cache        map[string]cacheItem
 	protectCache sync.RWMutex
-	logger *log.Logger
+	logger       *log.Logger
 }
 
-func NewRequestCache(ttl time.Duration, logger *log.Logger) *RequestCache {
-	return &RequestCache{
-		maxTTL: ttl,
-		cache:	make(map[string]cacheItem),
-		logger: logger,
+// Inject dependencies
+func (rc *RequestCache) Inject(
+	cfg *struct {
+	DefaultCacheTTL float64 `inject:"config:seabackend.defaultCacheTTL"`
+}) *RequestCache {
+	if cfg != nil {
+		rc.maxTTL = time.Duration(cfg.DefaultCacheTTL) * time.Second
 	}
+	rc.cache = make(map[string]cacheItem)
+	rc.logger = log.New(os.Stdout, "gosea", log.LstdFlags)
+
+	return rc
 }
+
+//func NewRequestCache(ttl time.Duration, logger *log.Logger) *RequestCache {
+//	return &RequestCache{
+//		maxTTL: ttl,
+//		cache:  make(map[string]cacheItem),
+//		logger: logger,
+//	}
+//}
 
 // Set writes data with key into the request Cache
 func (rc *RequestCache) Set(key string, data interface{}) error {
@@ -51,7 +66,7 @@ func (rc *RequestCache) Set(key string, data interface{}) error {
 
 	// write data into Cache
 	rc.cache[key] = cacheItem{
-		data: buf.Bytes(),
+		data:      buf.Bytes(),
 		createdAt: time.Now(),
 	}
 

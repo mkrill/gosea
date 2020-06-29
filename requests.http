@@ -2,4 +2,4 @@ GET http://localhost:8080/health
 ###
 GET http://localhost:8080/api?filter=quasi
 ###
-GET http://localhost:8080/api
+GET http://localhost:3322/api

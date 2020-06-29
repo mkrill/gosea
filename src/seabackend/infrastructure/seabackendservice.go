@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Service"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/mkrill/gosea/src/seabackend/domain/entity"
+	"github.com/mkrill/gosea/src/seabackend/domain/service"
 )
 
 // Cache is an interface containing the caching functions Get and Set
@@ -26,14 +27,14 @@ type (
 )
 
 // verify interface
-var _ Service.ISeaBackendService = &SeaBackendServiceAdapter{}
+var _ service.ISeaBackendService = &SeaBackendServiceAdapter{}
 
 // Inject dependencies
 func (sba *SeaBackendServiceAdapter) Inject(
 	cache *RequestCache,
 	cfg *struct {
-	SeaEndpoint    string  `inject:"config:seaBackend.seaEndpoint"`
-	DefaultTimeout float64 `inject:"config:seaBackend.defaultTimeout"`
+	SeaEndpoint    string  `inject:"config:seabackend.seaEndpoint"`
+	DefaultTimeout float64 `inject:"config:seabackend.defaultTimeout"`
 }) *SeaBackendServiceAdapter {
 	if cfg != nil {
 		sba.Endpoint = cfg.SeaEndpoint
@@ -46,8 +47,8 @@ func (sba *SeaBackendServiceAdapter) Inject(
 }
 
 // LoadPosts loads all posts existing from p.Endpoint
-func (sba *SeaBackendServiceAdapter) LoadPosts(ctx context.Context) ([]Entity.RemotePost, error) {
-	var remotePosts []Entity.RemotePost
+func (sba *SeaBackendServiceAdapter) LoadPosts(ctx context.Context) ([]entity.RemotePost, error) {
+	var remotePosts []entity.RemotePost
 
 	err := sba.load(ctx, sba.Endpoint+"/posts", &remotePosts)
 
@@ -59,8 +60,8 @@ func (sba *SeaBackendServiceAdapter) LoadPosts(ctx context.Context) ([]Entity.Re
 }
 
 // LoadUsers loads all existing users from external Endpoint
-func (sba *SeaBackendServiceAdapter) LoadUsers(ctx context.Context) ([]Entity.RemoteUser, error) {
-	var remoteUsers []Entity.RemoteUser
+func (sba *SeaBackendServiceAdapter) LoadUsers(ctx context.Context) ([]entity.RemoteUser, error) {
+	var remoteUsers []entity.RemoteUser
 	err := sba.load(ctx, sba.Endpoint+"/users", &remoteUsers)
 	if err != nil {
 		return remoteUsers, fmt.Errorf("could not load users: %w", err)
@@ -70,9 +71,9 @@ func (sba *SeaBackendServiceAdapter) LoadUsers(ctx context.Context) ([]Entity.Re
 }
 
 // LoadUser loads user with id from external Endpoint
-func (sba *SeaBackendServiceAdapter) LoadUser(ctx context.Context, id string) (Entity.RemoteUser, error) {
-	var remoteUsers []Entity.RemoteUser
-	var user Entity.RemoteUser
+func (sba *SeaBackendServiceAdapter) LoadUser(ctx context.Context, id string) (entity.RemoteUser, error) {
+	var remoteUsers []entity.RemoteUser
+	var user entity.RemoteUser
 
 	err := sba.load(ctx, sba.Endpoint+"/users?id="+id, &remoteUsers)
 

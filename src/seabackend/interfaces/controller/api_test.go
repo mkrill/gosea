@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
+	"github.com/mkrill/gosea/src/seabackend/domain/entity"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -15,17 +15,17 @@ import (
 
 // postsMock simulates a result from LoadPosts()
 type postsMock struct {
-	remotePosts []Entity.RemotePost
+	remotePosts []entity.RemotePost
 	err         error
 }
 
-func (pm *postsMock) LoadPosts(ctx context.Context) ([]Entity.RemotePost, error) {
+func (pm *postsMock) LoadPosts(ctx context.Context) ([]entity.RemotePost, error) {
 	return pm.remotePosts, pm.err
 }
 
-func (pm *postsMock) LoadUser(ctx context.Context, id string) (Entity.RemoteUser, error) {
+func (pm *postsMock) LoadUser(ctx context.Context, id string) (entity.RemoteUser, error) {
 	// ToDo Returning empty user???
-	return Entity.RemoteUser{}, nil
+	return entity.RemoteUser{}, nil
 }
 
 func TestApi_Posts(t *testing.T) {
@@ -33,7 +33,7 @@ func TestApi_Posts(t *testing.T) {
 
 	testApi := &ApiController{
 		seaBackend: &postsMock{
-			remotePosts: []Entity.RemotePost{
+			remotePosts: []entity.RemotePost{
 				{
 					UserID: json.Number("1"),
 					ID:     json.Number("1"),
@@ -60,13 +60,13 @@ func TestApi_Posts(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "application/json", w.Header().Get("content-type"))
 
-	var responsePosts []Entity.Post
+	var responsePosts []entity.Post
 	err := json.NewDecoder(w.Body).Decode(&responsePosts)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	expected := []Entity.Post{
+	expected := []entity.Post{
 		{
 			Title: "Title1",
 			Body:  "Body1",

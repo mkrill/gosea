@@ -1,4 +1,4 @@
-package Entity
+package entity
 
 type RemoteCompany struct {
 	ID          int    `json:"-"`

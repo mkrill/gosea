@@ -1,8 +1,8 @@
-package seaBackend
+package seabackend
 
 import (
 	"flamingo.me/flamingo/v3/framework/web"
-	"github.com/mkrill/gosea/src/seaBackend/interfaces/controller"
+	"github.com/mkrill/gosea/src/seabackend/interfaces/controller"
 )
 
 // routes struct is defined to specify route handlers
@@ -11,12 +11,13 @@ type routes struct {
 }
 
 // Inject method which defines all dependency injections used by routes struct
-func (r *routes) Inject(api *controller.ApiController) {
+func (r *routes) Inject(api *controller.ApiController) *routes {
 	r.apiController = api
+	return r
 }
 
 // Routes method which defines all routes handlers in module
 func (r *routes) Routes(registry *web.RouterRegistry) {
-	registry.HandleGet("seaBackend.Posts", r.apiController.ShowPostsWithUsers)
-	registry.MustRoute("/api", "seaBackend.Posts")
+	registry.MustRoute("/api", "api.ShowPostsWithUsers")
+	registry.HandleGet("api.ShowPostsWithUsers", r.apiController.ShowPostsWithUsers)
 }

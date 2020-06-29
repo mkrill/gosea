@@ -3,8 +3,8 @@ package controller
 import (
 	"context"
 	"flamingo.me/flamingo/v3/framework/web"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Entity"
-	"github.com/mkrill/gosea/src/seaBackend/domain/Service"
+	"github.com/mkrill/gosea/src/seabackend/domain/entity"
+	"github.com/mkrill/gosea/src/seabackend/domain/service"
 	"github.com/pkg/errors"
 	"net/http"
 	"sync"
@@ -12,21 +12,21 @@ import (
 
 type (
 	ApiController struct {
-		seaBackend  Service.ISeaBackendService
+		seaBackend  service.ISeaBackendService
 		responder   *web.Responder
 		workerCount int
 	}
 )
 
 func (a *ApiController) Inject(
-	sba Service.ISeaBackendService,
+	sba service.ISeaBackendService,
 	responder *web.Responder,
 	cfg *struct {
-	workerCount float64 `inject:"config:api.workerCount"`
-},
+		WorkerCount float64 `inject:"config:api.workerCount"`
+	},
 ) *ApiController {
 	if cfg != nil {
-		a.workerCount = int(cfg.workerCount)
+		a.workerCount = int(cfg.WorkerCount)
 		a.responder = responder
 		a.seaBackend = sba
 	}
@@ -41,22 +41,20 @@ func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request
 		return a.responder.ServerError(errors.Errorf("Controller method needs to be called by GET request"))
 	}
 
-	ctxValue := context.WithValue(req.Request().Context(), "id", 1)
-
-	remotePosts, err := a.seaBackend.LoadPosts(ctxValue)
+	remotePosts, err := a.seaBackend.LoadPosts(ctx)
 	if err != nil {
-		//a.logger.Printf("error loading seaBackend: %s", err)
+		//a.logger.Printf("error loading seabackend: %s", err)
 		return a.responder.ServerError(err)
 	}
 
 	// retrieve query parameter 'filterValue' from URL
 	filterValue := req.Request().URL.Query().Get("filter")
 
-	responsePosts := make([]Entity.Post, 0)
+	responsePosts := make([]entity.Post, 0)
 	// Create channel to pass remotePosts to be processed to loadUserFunc
-	remotePostsChan := make(chan Entity.RemotePost)
+	remotePostsChan := make(chan entity.RemotePost)
 	// Create channel to pass responsePosts back from loadUserFunc
-	responsePostsChan := make(chan Entity.Post)
+	responsePostsChan := make(chan entity.Post)
 
 	// create function to enhance remotePosts with user data
 	loadUserFunc := func(workerId int, wg *sync.WaitGroup) {
@@ -64,11 +62,11 @@ func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request
 		defer wg.Done()
 
 		for remotePost := range remotePostsChan {
-			user, err := a.seaBackend.LoadUser(ctxValue, remotePost.UserID.String())
+			user, err := a.seaBackend.LoadUser(ctx, remotePost.UserID.String())
 			if err != nil {
 				continue
 			}
-			post := Entity.Post{
+			post := entity.Post{
 				Title:       remotePost.Title,
 				Body:        remotePost.Body,
 				Username:    user.Username,
@@ -105,7 +103,7 @@ func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request
 	// start processing remotePosts
 	for _, remotePost := range remotePosts {
 		// if current remotePost dies not match the filter, skip it
-		if !remotePost.Contains(filterValue, Entity.FieldTitle) {
+		if !remotePost.Contains(filterValue, entity.FieldTitle) {
 			continue
 		}
 		// put remotePost into remotePostChan as input for loadUserFunc()
