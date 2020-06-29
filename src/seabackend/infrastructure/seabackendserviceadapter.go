@@ -27,7 +27,7 @@ type (
 )
 
 // verify interface
-var _ service.ISeaBackendService = &SeaBackendServiceAdapter{}
+var _ service.SeaBackendLoader = &SeaBackendServiceAdapter{}
 
 // Inject dependencies
 func (sba *SeaBackendServiceAdapter) Inject(

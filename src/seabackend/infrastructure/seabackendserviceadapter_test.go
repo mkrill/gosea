@@ -1,4 +1,4 @@
-package seabackend
+package infrastructure
 
 import (
 	"context"
