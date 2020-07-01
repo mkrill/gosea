@@ -20,9 +20,9 @@ type Cacher interface {
 
 type (
 	SeaBackendServiceAdapter struct {
-		Endpoint   string
-		Cache      Cacher
-		HttpClient *http.Client
+		endpoint   string
+		cache      Cacher
+		httpClient *http.Client
 	}
 )
 
@@ -31,26 +31,26 @@ var _ service.SeaBackendLoader = &SeaBackendServiceAdapter{}
 
 // Inject dependencies
 func (sba *SeaBackendServiceAdapter) Inject(
-	cache *RequestCache,
+	cache Cacher,
 	cfg *struct {
 		SeaEndpoint    string  `inject:"config:seabackend.endpoint"`
 		DefaultTimeout float64 `inject:"config:seabackend.defaultTimeout"`
 	},
 ) {
 	if cfg != nil {
-		sba.Endpoint = cfg.SeaEndpoint
-		sba.HttpClient = &http.Client{
+		sba.endpoint = cfg.SeaEndpoint
+		sba.httpClient = &http.Client{
 			Timeout: time.Duration(cfg.DefaultTimeout) * time.Second,
 		}
 	}
-	sba.Cache = cache
+	sba.cache = cache
 }
 
 // LoadPosts loads all posts existing from p.Endpoint
 func (sba *SeaBackendServiceAdapter) LoadPosts(ctx context.Context) ([]entity.RemotePost, error) {
 	var remotePosts []entity.RemotePost
 
-	err := sba.load(ctx, sba.Endpoint+"/posts", &remotePosts)
+	err := sba.load(ctx, sba.endpoint+"/posts", &remotePosts)
 
 	if err != nil {
 		return remotePosts, fmt.Errorf("could not load posts: %w", err)
@@ -62,7 +62,7 @@ func (sba *SeaBackendServiceAdapter) LoadPosts(ctx context.Context) ([]entity.Re
 // LoadUsers loads all existing users from external Endpoint
 func (sba *SeaBackendServiceAdapter) LoadUsers(ctx context.Context) ([]entity.RemoteUser, error) {
 	var remoteUsers []entity.RemoteUser
-	err := sba.load(ctx, sba.Endpoint+"/users", &remoteUsers)
+	err := sba.load(ctx, sba.endpoint+"/users", &remoteUsers)
 	if err != nil {
 		return remoteUsers, fmt.Errorf("could not load users: %w", err)
 	}
@@ -75,7 +75,7 @@ func (sba *SeaBackendServiceAdapter) LoadUser(ctx context.Context, id string) (e
 	var remoteUsers []entity.RemoteUser
 	var user entity.RemoteUser
 
-	err := sba.load(ctx, sba.Endpoint+"/users?id="+id, &remoteUsers)
+	err := sba.load(ctx, sba.endpoint+"/users?id="+id, &remoteUsers)
 
 	if err != nil {
 		return user, fmt.Errorf("could not load user: %w", err)
@@ -94,14 +94,14 @@ func (sba *SeaBackendServiceAdapter) LoadUser(ctx context.Context, id string) (e
 func (sba *SeaBackendServiceAdapter) load(ctx context.Context, requestUrl string, data interface{}) (err error) {
 
 	// retrieve request result from Cacher
-	err = sba.Cache.Get(requestUrl, data)
+	err = sba.cache.Get(requestUrl, data)
 	// if requestUrl was found in Cacher
 	if err == nil {
 		return nil
 	}
 
 	// set timeout context to defaultTimeout (see above)
-	ctxTimeout, cancel := context.WithTimeout(ctx, sba.HttpClient.Timeout)
+	ctxTimeout, cancel := context.WithTimeout(ctx, sba.httpClient.Timeout)
 	defer cancel()
 
 	// Create a get request to backend with requestUrl
@@ -114,12 +114,16 @@ func (sba *SeaBackendServiceAdapter) load(ctx context.Context, requestUrl string
 	req.Header.Set("accept-encoding", "application/json")
 
 	// execute request
-	res, err := sba.HttpClient.Do(req)
+	res, err := sba.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer func() {
-		err = res.Body.Close()
+		bodyCloseErr := res.Body.Close()
+		// return bodyCloseErr only, if err == nil so far, otherwise err!=nil so far might get overwritten
+		if err == nil {
+			err = bodyCloseErr
+		}
 	}()
 
 	if res.StatusCode >= 400 {
@@ -138,7 +142,7 @@ func (sba *SeaBackendServiceAdapter) load(ctx context.Context, requestUrl string
 	}
 
 	// refresh Cacher item with data just read
-	err = sba.Cache.Set(requestUrl, data)
+	err = sba.cache.Set(requestUrl, data)
 	if err != nil {
 		return fmt.Errorf("failed to save data to Cacher: %w", err)
 	}
