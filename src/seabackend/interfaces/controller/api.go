@@ -1,5 +1,7 @@
 package controller
 
+//go:generate mockery --all
+
 import (
 	"context"
 
