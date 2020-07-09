@@ -12,8 +12,8 @@ import (
 
 type (
 	ApiController struct {
-		postsAndUserApp PostsWithUsersLoader
-		responder       *web.Responder
+		pwul      PostsWithUsersLoader
+		responder *web.Responder
 	}
 
 	PostsWithUsersLoader interface {
@@ -26,7 +26,7 @@ func (a *ApiController) Inject(
 	responder *web.Responder,
 ) *ApiController {
 
-	a.postsAndUserApp = pwul
+	a.pwul = pwul
 	a.responder = responder
 
 	return a
@@ -38,7 +38,7 @@ func (a *ApiController) ShowPostsWithUsers(ctx context.Context, req *web.Request
 	// retrieve query parameter 'filterValue' from URL
 	filter := req.Request().URL.Query().Get("filter")
 
-	responsePosts, err := a.postsAndUserApp.RetrievePostsWithUsersFromBackend(ctx, filter)
+	responsePosts, err := a.pwul.RetrievePostsWithUsersFromBackend(ctx, filter)
 	if err != nil {
 		return a.responder.ServerError(err)
 	}
